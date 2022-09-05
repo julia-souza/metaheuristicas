@@ -4,6 +4,7 @@ from math import sqrt
 import tkinter
 import tkinter.filedialog
 from PIL import Image, ImageDraw, ImageTk
+
 import matplotlib.pyplot as plt
 
 
@@ -270,8 +271,11 @@ class TSPSolver:
         print()
 
     def busca_local(self, solucao_atual):
-        passo_busca = [0]
-        valor_atual = [self.custo_solucao(solucao_atual)]
+        # passo_busca = [0]
+        # valor_atual = [self.custo_solucao(solucao_atual)]
+
+        self.passo_busca.append(len(self.passo_busca))
+        self.valor_atual.append()
 
         print("---> Busca local iniciada ---")
         melhor_vizinho = [0] * self.dimension
@@ -287,8 +291,8 @@ class TSPSolver:
                 print("Melhoria: Custo = {:.3f}, Solução: ".format(custo_melhor_vizinho), end='')
                 self.imprimir_solucao(melhor_vizinho)
 
-                passo_busca.append(len(passo_busca))
-                valor_atual.append(custo_melhor_vizinho)
+                self.passo_busca.append(len(passo_busca))
+                self.valor_atual.append(custo_melhor_vizinho)
 
                 self.mostrar_solucao(melhor_vizinho)
                 self.canvas.update_idletasks()          # atualiza o canvas
@@ -297,16 +301,89 @@ class TSPSolver:
 
         # coordenada x = passo_busca
         # coordenada y = valor_atual
-        plt.plot(passo_busca, valor_atual)
-        plt.xlabel("passo busca")
-        plt.ylabel("custo")
-        plt.show()
-        
+        # plt.plot(passo_busca, valor_atual)
+        # plt.xlabel("passo busca")
+        # plt.ylabel("custo")
+        # plt.show()
+
         return solucao_otima_local
 
     def soluciona_com_busca_local(self):
         solucao_inicial = self.construir_solucao_e_mostrar()
         solucao_final = self.busca_local(solucao_inicial)
         self.mostrar_solucao(solucao_final)
+
+    def soluciona_com_multistart(self):
+        pass
+
+
+    def perturba_solucao_2_trocas_2_cidades(self, solucao_original, solucao_perturbada):
+        self.copia_solucao(solucao_original, solucao_perturbada)
+
+        p1 = random.randrange(0, self.dimension)
+        dist = random.randrange(1, self.dimension)
+        p2 = (p1 + dist) % self.dimension
+
+        solucao_perturbada[p1] = solucao_original[p2]
+        solucao_perturbada[p2] = solucao_original[p1]
+
+        p1 = random.randrange(0, self.dimension)
+        dist = random.randrange(1, self.dimension)
+        p2 = (p1 + dist) % self.dimension
+
+        aux = solucao_perturbada[p1]
+        solucao_perturbada[p1] = solucao_original[p2]
+        solucao_perturbada[p2] = aux
+
+
+
+
+    def soluciona_com_ils(self):
+        '''Iterated local search'''
+
+        passo_busca = []
+        valor_atual = []
+
+
+        #1. gerar solução inicial
+        solucao_inicial = self.construir_solucao()
+
+        #2. realizar uma busca local
+        solucao_otima_local = self.busca_local(solucao_inicial)
+        melhor_solucao_conhecida = [0] * self.dimension
+        self.copia_solucao(solucao_otima_local, melhor_solucao_conhecida)
+
+        interacoes_sem_melhorias = 0 #critério de parada
+
+        #3. se critério de parada não satisfeito
+        valor = 10 #numero máximo de interações sem melhorias
+        while interacoes_sem_melhorias <= valor:
+
+            #4. perturbar a melhor solução conhecida
+            # solucao_inicial = self.perturba_solucao(melhor_solucao_conhecida)
+            self.perturba_solucao(melhor_solucao_conhecida, solucao_inicial)
+
+            #5. volar ao passo 2
+            solucao_otima_local = self.busca_local(solucao_inicial)
+            custo_otima_local = self.custo_solucao(solucao_otima_local)
+            custo_melhor_conhecida = self.custo_solucao(melhor_solucao_conhecida)
+
+            if custo_otima_local < custo_melhor_conhecida:
+                self.copia_solucao(solucao_otima_local, melhor_solucao_conhecida)
+                interacoes_sem_melhorias = 0
+            else:
+                interacoes_sem_melhorias += 1
+
+        self.mostrar_solucao()
+
+        # coordenada x = passo_busca
+        # coordenada y = valor_atual
+        plt.plot(passo_busca, valor_atual)
+        plt.xlabel("passo busca")
+        plt.ylabel("custo")
+        plt.show()
+
+        return melhor_solucao_conhecida           
+
 
 tsp_solver = TSPSolver()
