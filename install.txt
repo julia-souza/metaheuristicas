@@ -1,5 +1,0 @@
-py -m pip install Pillow --proxy 20191si032:Usuar%210123@172.16.48.1:3128
-
-python -m tkinter 
-
-python -m pip install -U matplotlib --proxy 20191si032:Usuar%210123@172.16.48.1:3128

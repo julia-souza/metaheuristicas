@@ -4,9 +4,7 @@ from math import sqrt
 import tkinter
 import tkinter.filedialog
 from PIL import Image, ImageDraw, ImageTk
-
 import matplotlib.pyplot as plt
-
 
 class TSPSolver:
     escala          : float
@@ -37,6 +35,7 @@ class TSPSolver:
         self.canvas = None
         self.button_busca_local = None
         self.button_gerar_solucao = None
+        self.button_ils = None
         self.entry_escala = None
         self.label_escala = None
         self.button_abrir = None
@@ -104,6 +103,7 @@ class TSPSolver:
         self.entry_escala = tkinter.Entry(self.frame)
         self.button_gerar_solucao = tkinter.Button(self.frame, text="gerar solução", command=self.construir_solucao_e_mostrar)
         self.button_busca_local = tkinter.Button(self.frame, text="busca local", command=self.soluciona_com_busca_local)
+        self.button_ils = tkinter.Button(self.frame, text="ILS", command=self.soluciona_com_ils)
         self.canvas = tkinter.Canvas(self.frame, width=800, height=700)
         self.img = Image.new("RGB", size=(800, 700), color=(255, 255, 255))
         self.tkimg = ImageTk.PhotoImage(self.img)
@@ -118,6 +118,7 @@ class TSPSolver:
         self.entry_escala.grid(         row=1, column=1,                            sticky=tkinter.W)
         self.button_gerar_solucao.grid( row=2, column=0,                            sticky=tkinter.W)
         self.button_busca_local.grid(   row=2, column=1,                            sticky=tkinter.W)
+        self.button_ils.grid(           row=2, column=2,                            sticky=tkinter.W)
         self.canvas.grid(               row=3, column=0, columnspan=8, rowspan=5)
 
         self.root.mainloop()
@@ -128,8 +129,8 @@ class TSPSolver:
         self.y_max = -100000000
         self.y_min = 100000000
         for i in range(len(self.coords)):
-            x = self.coords[i]['x'] * self.escala
-            y = self.coords[i]['y'] * self.escala
+            x = self.coords[i]['x']
+            y = self.coords[i]['y']
             if x < self.x_min:
                 self.x_min = x
             if y < self.y_min:
@@ -138,12 +139,32 @@ class TSPSolver:
                 self.x_max = x
             if y > self.y_max:
                 self.y_max = y
+
+    def aplicar_escala(self):
+        self.x_min *= self.escala
+        self.y_min *= self.escala
+        self.x_max *= self.escala
+        self.y_max *= self.escala
         self.size_x = int(self.x_max - self.x_min) + 20
         self.size_y = int(self.y_max - self.y_min) + 20
 
+    def calcular_escala(self):
+        if (len(self.entry_escala.get()) > 0):
+            self.escala = float(self.entry_escala.get())
+        else:
+            suggested_width = 1000
+            suggested_height = 700
+            if (self.x_max - self.x_min) / (self.y_max - self.y_min) >= suggested_width / suggested_height:
+                self.escala = suggested_width / (self.x_max - self.x_min)
+            else:
+                self.escala = suggested_height / (self.y_max - self.y_min)
+            self.entry_escala.delete(0, 'end')
+            self.entry_escala.insert(0, '{:.3f}'.format(self.escala))
+
     def gerar_imagem_base(self):
-        self.escala = float(self.entry_escala.get())
         self.compute_max_and_min_coords()
+        self.calcular_escala()
+        self.aplicar_escala()
         self.img = Image.new("RGB", size=(self.size_x, self.size_y), color=(255, 255, 255))
         self.img_draw = ImageDraw.Draw(self.img)
         self.img_draw.rectangle(xy=(0, 0, self.size_x, self.size_y), fill="#ffffff")
@@ -252,8 +273,8 @@ class TSPSolver:
         valor_melhor_vizinho = self.custo_solucao(solucao_atual)
         vizinho = [0] * self.dimension
         encontrou_melhoria = False
-        for p1 in range(self.dimension):  # p1 = [0, 1, 2, 3] para n = 5
-            for i2 in range(1, self.dimension - 1):  # se p1 = 0, p2 = [1, 2, 3, 4] para n = 5
+        for p1 in range(self.dimension):  # p1 = [0, 1, 2, 3, 4] para n = 5
+            for i2 in range(1, self.dimension):  # se p1 = 0, p2 \in [1, 2, 3, 4] para n = 5; se p1 = 1, p2 \in [2, 3, 4, 0]
                 p2 = (p1 + i2) % self.dimension
                 self.troca_2_arestas(solucao_atual, vizinho, p1, p2)
                 custo_vizinho = self.custo_solucao(vizinho)
@@ -271,11 +292,8 @@ class TSPSolver:
         print()
 
     def busca_local(self, solucao_atual):
-        # passo_busca = [0]
-        # valor_atual = [self.custo_solucao(solucao_atual)]
-
         self.passo_busca.append(len(self.passo_busca))
-        self.valor_atual.append()
+        self.valor_atual.append(self.custo_solucao(solucao_atual))
 
         print("---> Busca local iniciada ---")
         melhor_vizinho = [0] * self.dimension
@@ -291,20 +309,13 @@ class TSPSolver:
                 print("Melhoria: Custo = {:.3f}, Solução: ".format(custo_melhor_vizinho), end='')
                 self.imprimir_solucao(melhor_vizinho)
 
-                self.passo_busca.append(len(passo_busca))
+                self.passo_busca.append(len(self.passo_busca))
                 self.valor_atual.append(custo_melhor_vizinho)
-
+                
                 self.mostrar_solucao(melhor_vizinho)
                 self.canvas.update_idletasks()          # atualiza o canvas
                 time.sleep(0.5)                         # pausa para o usuário observar a mudança
         print("---> Busca local finalizada ---\n")
-
-        # coordenada x = passo_busca
-        # coordenada y = valor_atual
-        # plt.plot(passo_busca, valor_atual)
-        # plt.xlabel("passo busca")
-        # plt.ylabel("custo")
-        # plt.show()
 
         return solucao_otima_local
 
@@ -316,74 +327,66 @@ class TSPSolver:
     def soluciona_com_multistart(self):
         pass
 
-
     def perturba_solucao_2_trocas_2_cidades(self, solucao_original, solucao_perturbada):
         self.copia_solucao(solucao_original, solucao_perturbada)
-
         p1 = random.randrange(0, self.dimension)
         dist = random.randrange(1, self.dimension)
         p2 = (p1 + dist) % self.dimension
-
         solucao_perturbada[p1] = solucao_original[p2]
         solucao_perturbada[p2] = solucao_original[p1]
-
         p1 = random.randrange(0, self.dimension)
         dist = random.randrange(1, self.dimension)
         p2 = (p1 + dist) % self.dimension
-
         aux = solucao_perturbada[p1]
-        solucao_perturbada[p1] = solucao_original[p2]
+        solucao_perturbada[p1] = solucao_perturbada[p2]
         solucao_perturbada[p2] = aux
 
-
-
+    def perturba_solucao_2_trocas_2_arestas(self, solucao_original, solucao_perturbada):
+        solucao_intermediaria = [0] * self.dimension
+        p1 = random.randrange(0, self.dimension)
+        dist = random.randrange(1, self.dimension)
+        p2 = (p1 + dist) % self.dimension
+        self.troca_2_arestas(solucao_original, solucao_intermediaria, p1, p2)
+        p1 = random.randrange(0, self.dimension)
+        dist = random.randrange(1, self.dimension)
+        p2 = (p1 + dist) % self.dimension
+        self.troca_2_arestas(solucao_intermediaria, solucao_perturbada, p1, p2)
 
     def soluciona_com_ils(self):
-        '''Iterated local search'''
+        '''Iterated Local Search'''
+        self.passo_busca = []
+        self.valor_atual = []
 
-        passo_busca = []
-        valor_atual = []
-
-
-        #1. gerar solução inicial
+        # 1. gerar solução inicial
         solucao_inicial = self.construir_solucao()
-
-        #2. realizar uma busca local
+        # 2. realizar uma busca local
         solucao_otima_local = self.busca_local(solucao_inicial)
         melhor_solucao_conhecida = [0] * self.dimension
         self.copia_solucao(solucao_otima_local, melhor_solucao_conhecida)
-
-        interacoes_sem_melhorias = 0 #critério de parada
-
-        #3. se critério de parada não satisfeito
-        valor = 10 #numero máximo de interações sem melhorias
-        while interacoes_sem_melhorias <= valor:
-
-            #4. perturbar a melhor solução conhecida
-            # solucao_inicial = self.perturba_solucao(melhor_solucao_conhecida)
-            self.perturba_solucao(melhor_solucao_conhecida, solucao_inicial)
-
-            #5. volar ao passo 2
+        iteracoes_sem_melhoria = 0
+        # 3. se critério de parada não satisfeito
+        while iteracoes_sem_melhoria <= 50:
+        # 4.    perturbar melhor solução conhecida
+            #self.perturba_solucao_2_trocas_2_cidades(melhor_solucao_conhecida, solucao_inicial)
+            self.perturba_solucao_2_trocas_2_arestas(melhor_solucao_conhecida, solucao_inicial)
+        # 5.    voltar ao passo 2
             solucao_otima_local = self.busca_local(solucao_inicial)
             custo_otima_local = self.custo_solucao(solucao_otima_local)
             custo_melhor_conhecida = self.custo_solucao(melhor_solucao_conhecida)
-
             if custo_otima_local < custo_melhor_conhecida:
                 self.copia_solucao(solucao_otima_local, melhor_solucao_conhecida)
-                interacoes_sem_melhorias = 0
+                iteracoes_sem_melhoria = 0
             else:
-                interacoes_sem_melhorias += 1
+                iteracoes_sem_melhoria += 1
+        self.mostrar_solucao(melhor_solucao_conhecida)
+        print("\nMelhor..: Custo = {:.3f}, Solução: ".format(self.custo_solucao(melhor_solucao_conhecida)), end='')
+        self.imprimir_solucao(melhor_solucao_conhecida)
 
-        self.mostrar_solucao()
-
-        # coordenada x = passo_busca
-        # coordenada y = valor_atual
-        plt.plot(passo_busca, valor_atual)
+        plt.plot(self.passo_busca, self.valor_atual)
         plt.xlabel("passo busca")
         plt.ylabel("custo")
         plt.show()
 
-        return melhor_solucao_conhecida           
-
+        return melhor_solucao_conhecida
 
 tsp_solver = TSPSolver()
