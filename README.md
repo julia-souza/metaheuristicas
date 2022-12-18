@@ -5,3 +5,4 @@
 
 Este repositório apresenta os materiais utilizados durante a disciplina. 
 O diretório `doc`, apresenta algumas informações teóricas sobre os problemas estudados ao longo do curso. Já os demais, contém algoritmos desenvolvidos. 
+O diretório `p-medianas` contém os arquivos necessários e suas instruções para a execução do trabalho final da disciplina. 
